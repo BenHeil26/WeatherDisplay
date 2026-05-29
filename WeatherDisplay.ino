@@ -24,22 +24,13 @@ char* pass = SECRET_PASS;
 int status = WL_IDLE_STATUS;
 
 unsigned long last_time_stamp = 0;
-const unsigned long poll_interval = 10 * 1000L; // how long (in milliseconds) to wait to poll
+const unsigned long poll_interval = 10*1000L; // how long (in milliseconds) to wait to poll
 
 String temperature;
-char *server = "https://api.weather.gov";
+char *server = "jsonplaceholder.typicode.com";
 
 const size_t BUF_SIZE = 4096;
 unsigned char response_buf[BUF_SIZE];
-
-// const char* SAMPLE_JSON = 
-// "{ \
-//     \"properties\": { \
-//         \"temperature\": { \
-//             \"value\": 22.0, \
-//         } \
-//     } \
-// }";
 
 WiFiSSLClient client;
 JsonDocument doc;
@@ -58,7 +49,7 @@ void scroll_to_led(String text){
   matrix.textFont(Font_5x7);
   matrix.beginText(0, 1, 0xFFFFFF);
   
-  matrix.println("    " + text + "    ");
+  matrix.println("    "+text+"    ");
   matrix.endText(SCROLL_LEFT);
 
   matrix.endDraw();
@@ -73,8 +64,8 @@ void get_temperature(){
   if (client.connect(server, 443)) {
     Serial.println("connecting...");
     // send the HTTP GET request:
-    client.println("GET /stations/E0797/observations/latest HTTP/1.1");
-    client.println("Host: api.weather.gov");
+    client.println("GET /posts/1 HTTP/1.1");
+    client.println("Host: jsonplaceholder.typicode.com");
     client.println("User-Agent: ArduinoWiFi/1.1");
     client.println("Connection: close");
     client.println("Accept: application/json");
@@ -131,7 +122,7 @@ void setup() {
 
 void loop() {
   scroll_to_led(temperature);
-  if (millis() - last_time_stamp > poll_interval){
+  if (millis()-last_time_stamp>poll_interval){
     get_temperature();
     last_time_stamp = millis();
   }
