@@ -30,10 +30,8 @@ String temperature;
 char *server = "api.weather.gov";
 
 const size_t BUF_SIZE = 8192;
-uint8_t response_buf[BUF_SIZE];
 
 WiFiSSLClient client;
-JsonDocument doc;
 ArduinoLEDMatrix matrix;
 
 void init_matrix(){
@@ -55,6 +53,19 @@ void scroll_to_led(String text){
   matrix.endDraw();
 }
 
+void print_to_led(String text){
+  matrix.beginDraw();
+  matrix.stroke(0xFFFFFFFF);
+  // add some static text
+  // will only show "UNO" (not enough space on the display)
+  matrix.textFont(Font_5x7);
+  matrix.beginText(0, 1, 0xFFFFFF);
+  matrix.println(text);
+  matrix.endText();
+
+  matrix.endDraw();
+}
+
 void get_temperature(){
   // close any connection before send a new request.
   // This will free the socket on the NINA module
@@ -64,7 +75,7 @@ void get_temperature(){
   if (client.connect(server, 443)) {
     Serial.println("connecting...");
     // send the HTTP GET request:
-    client.println("GET /stations/E0797/observations/latest HTTP/1.1");
+    client.println("GET /stations/AU953/observations/latest HTTP/1.1");
     client.println("Host: api.weather.gov");
     client.println("User-Agent: ArduinoWiFi/1.1");
     client.println("Connection: close");
@@ -77,26 +88,20 @@ void get_temperature(){
 
   delay(1000); // jitter for response latency
 
-  // uint32_t received_data_num = 0;
-  // while (client.available()) {
-  //   /* actual data reception */
-  //   char c = client.read();
-  //   /* print data to serial port */
-  //   Serial.print(c);
-  //   /* wrap data to 80 columns*/
-  //   received_data_num++;
-  //   if(received_data_num % 80 == 0) {
-  //     Serial.println();
-  //   }
-  // }
-
   if (client.available()){
-    client.read(response_buf, BUF_SIZE);
-    char *response = reinterpret_cast<char *>(response_buf); 
-    for(int i = 0; i < BUF_SIZE; i++){
-      Serial.print(response[i]);
+    char response_buf[BUF_SIZE];  // holds the raw response and headers
+    JsonDocument doc;             // wraps the actual request body in managed object
+    int index = 0;                // where to start reading (aka the body)
+    bool load = false;            // when to start reading
+    for(int i = 0; client.available() && i < BUF_SIZE; i++){
+      char c = client.read();
+      if (c == '{' && !load){
+        load = true;
+        index = i;
+      }
+      if (load) response_buf[i - index] = c;
     }
-    deserializeJson(doc, response);
+    deserializeJson(doc, response_buf);
     float temp = doc["properties"]["temperature"]["value"];
     temperature = String((1.8*temp)+32); //convert C to F
   } else{
@@ -140,9 +145,9 @@ void setup() {
 }
 
 void loop() {
-  scroll_to_led(temperature);
   if (millis()-last_time_stamp>poll_interval){
     get_temperature();
+    print_to_led(temperature);
     last_time_stamp = millis();
   }
 }
