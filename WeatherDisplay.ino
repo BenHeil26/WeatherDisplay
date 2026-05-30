@@ -93,6 +93,7 @@ void get_temperature(){
     JsonDocument doc;             // wraps the actual request body in managed object
     int index = 0;                // where to start reading (aka the body)
     bool load = false;            // when to start reading
+
     for(int i = 0; client.available() && i < BUF_SIZE; i++){
       char c = client.read();
       if (c == '{' && !load){
@@ -101,9 +102,10 @@ void get_temperature(){
       }
       if (load) response_buf[i - index] = c;
     }
+
     deserializeJson(doc, response_buf);
     float temp = doc["properties"]["temperature"]["value"];
-    temperature = String((1.8*temp)+32); //convert C to F
+    if (temp != 0) temperature = String(c_to_f(temp)); // guard for temp: null
   } else{
     scroll_to_led("no data");
   }
@@ -138,8 +140,8 @@ void setup() {
       init_matrix();
       scroll_to_led("connected");
     }
-    // wait 10 seconds for connection:
-    delay(10000);
+    // wait 1 seconds for connection:
+    delay(1000);
   }
   get_temperature(); 
 }
